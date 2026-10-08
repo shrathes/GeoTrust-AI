@@ -32,15 +32,15 @@
       </h1>
       <p class="text-xs text-gray-400 mt-1">Powered by Kaggle Mobility Schemas & Spatio-Temporal Evidence Fusion</p>
     </div>
-    <div class="flex gap-2">
+    <div class="flex gap-2 flex-wrap">
       <button type="button" onclick="loadPreset('credible')" class="px-3 py-1.5 rounded-lg bg-emerald-600/20 text-emerald-400 border border-emerald-500/30 text-xs font-semibold hover:bg-emerald-600/30 transition">
-        Case 1: Credible (Wuerzburg Retail)
+        Case 1: Credible
       </button>
       <button type="button" onclick="loadPreset('ghost')" class="px-3 py-1.5 rounded-lg bg-red-600/20 text-red-400 border border-red-500/30 text-xs font-semibold hover:bg-red-600/30 transition">
-        Case 2: Ghost Address (Virtual Hub)
+        Case 2: Ghost Address
       </button>
       <button type="button" onclick="loadPreset('ambiguous')" class="px-3 py-1.5 rounded-lg bg-amber-600/20 text-amber-400 border border-amber-500/30 text-xs font-semibold hover:bg-amber-600/30 transition">
-        Case 3: Ambiguous Shared (Dublin Co-Work)
+        Case 3: Ambiguous Co-Work
       </button>
     </div>
   </header>
@@ -50,6 +50,21 @@
     <!-- Left Panel: Form with Action Button -->
     <div class="lg:col-span-5 glass-card p-5 rounded-2xl space-y-4">
       <h3 class="text-sm font-bold text-gray-200 border-b border-gray-800 pb-2">Kaggle-Aligned Signal Inspector</h3>
+
+      <!-- Excel / CSV File Upload & Dropdown Selector Feature -->
+      <div class="bg-gray-900/60 p-3 rounded-xl border border-gray-700/60 space-y-3">
+        <div>
+          <label class="block text-[11px] font-semibold text-emerald-400 uppercase tracking-wide mb-1">📂 Upload Company Database (.csv)</label>
+          <input type="file" id="csv-file-input" accept=".csv" onchange="handleCSVUpload(event)" class="w-full text-xs text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-600 file:text-white hover:file:bg-emerald-500 cursor-pointer">
+        </div>
+
+        <div>
+          <label class="block text-[11px] font-semibold text-gray-300 uppercase tracking-wide mb-1">🏢 Select Company from Dataset</label>
+          <select id="company-select" onchange="onCompanyDropdownSelect(this)" class="w-full bg-gray-900 border border-gray-700 rounded-lg p-2 text-white text-xs">
+            <option value="">-- Upload dataset to populate list --</option>
+          </select>
+        </div>
+      </div>
 
       <form id="verification-form" onsubmit="handleFormSubmit(event)" class="space-y-3 text-xs">
         <div>
@@ -170,44 +185,23 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    // Structured Registry Dataset modeled on Kaggle (Wuerzburg Retail & Dublin Pedestrian Datasets schema)
+    // Structured Registry Dataset
     const locationRegistry = {
       "Apex Logistics Warehouse Hub": {
-        lat: 49.7913,
-        lng: 9.9534,
-        address: "Wuerzburg Industrial Sector B, Plot 42",
-        industry: "logistics",
-        building: "industrial",
-        activity: 85,
-        density: 2,
-        tx: 450,
-        hourlyPedestrians: [12, 8, 45, 92, 88, 35]
+        lat: 49.7913, lng: 9.9534, address: "Wuerzburg Industrial Sector B, Plot 42", industry: "logistics", building: "industrial", activity: 85, density: 2, tx: 450
       },
       "Virtual Capital & Freight Corp": {
-        lat: 49.7942,
-        lng: 9.9295,
-        address: "Residential Flat 4B, Suburb Lane",
-        industry: "logistics",
-        building: "residential",
-        activity: 5,
-        density: 48,
-        tx: 900,
-        hourlyPedestrians: [2, 1, 4, 6, 5, 2]
+        lat: 49.7942, lng: 9.9295, address: "Residential Flat 4B, Suburb Lane", industry: "logistics", building: "residential", activity: 5, density: 48, tx: 900
       },
       "OmniTech Co-Working Suite 402": {
-        lat: 53.3498,
-        lng: -6.2603,
-        address: "Dublin Tech Hub, Level 4, Grand Canal",
-        industry: "software",
-        building: "commercial",
-        activity: 55,
-        density: 32,
-        tx: 180,
-        hourlyPedestrians: [15, 10, 60, 75, 70, 40]
+        lat: 53.3498, lng: -6.2603, address: "Dublin Tech Hub, Level 4, Grand Canal", industry: "software", building: "commercial", activity: 55, density: 32, tx: 180
       }
     };
 
-    // Initialize Leaflet Map centered on Wuerzburg coordinates
+    // Global variable to hold uploaded CSV rows
+    let csvRowsData = [];
+
+    // Initialize Leaflet Map
     const map = L.map('map').setView([49.7913, 9.9534], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 19,
@@ -224,7 +218,7 @@
         map.setView([loc.lat, loc.lng], 14);
         if (currentMarker) map.removeLayer(currentMarker);
         currentMarker = L.marker([loc.lat, loc.lng]).addTo(map)
-          .bindPopup(`<b>${locationName}</b><br>${loc.address}`)
+          .bindPopup(`<b>${locationName}</b><br>${loc.address || 'Uploaded Dataset Address'}`)
           .openPopup();
       }
     }
@@ -236,11 +230,7 @@
     }
 
     function loadPreset(key) {
-      const presetKeys = { 
-        credible: "Apex Logistics Warehouse Hub", 
-        ghost: "Virtual Capital & Freight Corp", 
-        ambiguous: "OmniTech Co-Working Suite 402" 
-      };
+      const presetKeys = { credible: "Apex Logistics Warehouse Hub", ghost: "Virtual Capital & Freight Corp", ambiguous: "OmniTech Co-Working Suite 402" };
       const name = presetKeys[key];
       const p = locationRegistry[name];
 
@@ -256,7 +246,79 @@
       runVerification();
     }
 
-    // Chart.js Setup with Kaggle pedestrian schema format
+    // Handle CSV Upload and populate dropdown list
+    function handleCSVUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const text = e.target.result;
+        csvRowsData = text.split('\n').map(r => r.trim()).filter(r => r);
+        
+        if (csvRowsData.length > 1) {
+          const selectElement = document.getElementById('company-select');
+          if (selectElement) {
+            selectElement.innerHTML = '<option value="">-- Select a Company --</option>';
+            
+            for (let i = 1; i < csvRowsData.length; i++) {
+              const cols = csvRowsData[i].split(',').map(c => c.trim().replace(/^["']|["']$/g, ''));
+              const compName = cols[0];
+              if (compName) {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = compName;
+                selectElement.appendChild(opt);
+              }
+            }
+          }
+          
+          // Auto load the first company row
+          loadCompanyByIndex(1);
+          alert(`Successfully loaded CSV! Found ${csvRowsData.length - 1} records.`);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    function onCompanyDropdownSelect(selectObj) {
+      const rowIndex = selectObj.value;
+      if (rowIndex) {
+        loadCompanyByIndex(parseInt(rowIndex));
+      }
+    }
+
+    function loadCompanyByIndex(index) {
+      if (!csvRowsData[index]) return;
+      
+      const cols = csvRowsData[index].split(',').map(c => c.trim().replace(/^["']|["']$/g, ''));
+      const compName = cols[0] || "Company Entity";
+      const rawIndustry = (cols[2] || "software").toLowerCase();
+      
+      let industry = "software";
+      if (rawIndustry.includes("logistics") || rawIndustry.includes("transport")) industry = "logistics";
+      else if (rawIndustry.includes("financ") || rawIndustry.includes("account") || rawIndustry.includes("bank")) industry = "finance";
+      
+      const building = "commercial"; 
+      const activity = 65 + (index % 30);
+      const density = 10 + (index % 25);
+      const tx = 200 + (index * 5);
+
+      locationRegistry[compName] = { lat: 49.7913 + (index * 0.001), lng: 9.9534, industry, building, activity, density, tx };
+
+      document.getElementById('input-name').value = compName;
+      document.getElementById('input-industry').value = industry;
+      document.getElementById('input-building').value = building;
+      document.getElementById('slide-activity').value = activity;
+      document.getElementById('slide-density').value = density;
+      document.getElementById('slide-tx').value = tx;
+
+      updateSliderLabels();
+      updateMapLocation(compName);
+      runVerification();
+    }
+
+    // Chart.js Setup
     const ctx = document.getElementById('pulseChart').getContext('2d');
     const pulseChart = new Chart(ctx, {
       type: 'line',
@@ -369,7 +431,7 @@
         : `<li class="text-gray-500 italic">No supporting indicators.</li>`;
 
       document.getElementById('risk-factors').innerHTML = risks.length > 0
-        ? risksA.map(r => `<li class="text-red-400 font-medium">${r}</li>`).join('')
+        ? risks.map(r => `<li class="text-red-400 font-medium">${r}</li>`).join('')
         : `<li class="text-gray-500 italic">No structural anomalies or risk factors detected.</li>`;
 
       const mult = activity / 100;
